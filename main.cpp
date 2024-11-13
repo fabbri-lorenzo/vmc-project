@@ -7,8 +7,11 @@
 using namespace vmcp;
 
 // The various features of main can be toggled here
-constexpr std::array features = {true};
+bool const ho = true;
+bool const statistics = true;
+constexpr std::array features = {ho, statistics};
 
+// LF TODO:
 int main() {
     // Feature 1:
     // Various tests with the harmonic oscillator
@@ -39,5 +42,27 @@ int main() {
         std::cout << "Energy with the best alpha:\n"
                   << std::setprecision(3) << "Energy: " << std::setprecision(5) << vmcrBest.energy.val
                   << " +/- " << std::sqrt(vmcrBest.variance.val) << '\n';
+
+        if constexpr (features[1]) {
+            FPType alphaVal = 0.9f;
+            std::vector<Energy> energySamp = Energies_(VMCEnAndPoss<1, 1, 1>(
+                wavefHO, VarParams<1>{alphaVal}, secondDerHO, mass, potHO, bounds, numberEnergies, gen));
+
+            BlockingResult blockingResult = BlockingAnalysis(energySamp);
+            for (size_t blockGroup = 0; blockGroup < blockingResult.sizes.size(); ++blockGroup) {
+                std::cout << '\n'
+                          << "block size: " << blockingResult.sizes[blockGroup]
+                          << " , mean: " << blockingResult.means[blockGroup] << " , std. dev.: " << std::fixed
+                          << std::setprecision(5) << blockingResult.stdDevs[blockGroup] << '\n';
+            }
+
+            UIntType const numSamples = 1000;
+            BootstrapResult bootstrapResult = BootstrapAnalysis(energySamp, numSamples, gen);
+            std::cout << '\n'
+                      << "Bootstrap mean: " << bootstrapResult.meanOfMeans << std::fixed
+                      << std::setprecision(5) << "\nBootstrap std. dev.: " << bootstrapResult.stdDevOfMeans
+                      << "\nConfidence interval: " << bootstrapResult.confInterval.min << " - "
+                      << bootstrapResult.confInterval.max << '\n';
+        }
     }
 }

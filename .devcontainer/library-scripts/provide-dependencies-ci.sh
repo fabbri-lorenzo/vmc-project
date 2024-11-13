@@ -4,4 +4,5 @@ set -e
 # Install the necessary programs for CI
 apt-get install -y \
     g++ \
-    cmake
+    cmake \
+    libboost-all-dev

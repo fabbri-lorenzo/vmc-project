@@ -2,12 +2,18 @@
     "tasks": [
         {
             "label": "Build main",
-            "dependsOn": ["Create 'debug'", "Build main inside 'debug'"],
+            "dependsOn": [
+                "Create 'debug'",
+                "Build main inside 'debug'"
+            ],
             "dependsOrder": "sequence"
         },
         {
             "label": "Build this test",
-            "dependsOn": ["Create 'debug'", "Build this test inside 'debug'"],
+            "dependsOn": [
+                "Create 'debug'",
+                "Build this test inside 'debug'"
+            ],
             "dependsOrder": "sequence"
         },
         {

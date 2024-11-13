@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cassert>
+#include <iterator>
 #include <random>
 #include <type_traits>
 
@@ -22,6 +23,8 @@ using FPType = long double;
 using UIntType = long unsigned int;
 // Signed integer type
 using IntType = int;
+// Tyoe for iterator’s difference type
+using DiffType = std::vector<FPType>::difference_type;
 // Used instead of default_random_engine since that one is implementation-defined
 using RandomGenerator = std::mt19937;
 
@@ -65,12 +68,26 @@ struct VMCResult {
     Energy energy;
     EnVariance variance;
 };
+struct BlockingResult {
+    std::vector<IntType> sizes;
+    std::vector<FPType> means;
+    std::vector<FPType> stdDevs;
+};
+struct ConfInterval {
+    FPType min;
+    FPType max;
+};
+struct BootstrapResult {
+    FPType meanOfMeans;
+    FPType stdDevOfMeans;
+    ConfInterval confInterval;
+};
 // TODO: Rename if the function is renamed
 // WrappedVMVEnergies_ result
-template <Dimension D,ParticNum N>
+template <Dimension D, ParticNum N>
 struct EnAndPos {
     Energy energy;
-    Positions<D,N> positions;
+    Positions<D, N> positions;
 };
 // One-dimensional region of integration
 struct Bound {

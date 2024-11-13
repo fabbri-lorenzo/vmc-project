@@ -377,3 +377,25 @@ TEST_CASE("Testing WrappedVMCEnergies_") {
     //    }
     //}
 }
+
+TEST_CASE("Testing BlockingAnalysis") {
+    std::vector<vmcp::Energy> testEnergies = {vmcp::Energy{1.f}, vmcp::Energy{2.f}, vmcp::Energy{3.f},
+                                              vmcp::Energy{4.f}};
+    vmcp::FPType tolerance = 0.001;
+    vmcp::BlockingResult blockingResults = BlockingAnalysis(testEnergies);
+    CHECK(blockingResults.means[0] == 2.5);
+    CHECK(blockingResults.means[1] == 2.5);
+    CHECK(std::abs(blockingResults.stdDevs[0] - std::sqrt(1.25)) < tolerance);
+    CHECK(blockingResults.stdDevs[1] == 1);
+}
+
+TEST_CASE("Testing BootstrapAnalysis") {
+    vmcp::IntType const numSamples = 10000;
+    vmcp::FPType tolerance = 0.01;
+    vmcp::RandomGenerator rndGen{seed};
+    std::vector<vmcp::Energy> testEnergies = {vmcp::Energy{1}, vmcp::Energy{2}, vmcp::Energy{3},
+                                              vmcp::Energy{4}, vmcp::Energy{5}};
+    vmcp::BootstrapResult bootstrapResults = BootstrapAnalysis(testEnergies, numSamples, rndGen);
+    CHECK(std::abs(bootstrapResults.meanOfMeans - 3.f) < tolerance);
+    CHECK(std::abs(bootstrapResults.stdDevOfMeans - (1 / std::sqrt(2))) < tolerance);
+}
