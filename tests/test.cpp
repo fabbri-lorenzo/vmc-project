@@ -5,29 +5,37 @@
 
 #include <functional>
 #include <numbers>
+#include <string>
 #include <tuple>
 
 // LF TODO: Rename the gradients
 // I will explain myself better
 
+// FP TODO: Change mStep to a vmcp::Mass everywhere and define operator+= for vmcp::Mass
+
 constexpr vmcp::UIntType seed = 64826;
-constexpr vmcp::IntType iterations = 40;
+constexpr vmcp::IntType iterations = 64;
 // FP TODO: Rename this
 constexpr vmcp::IntType allowedStdDevs = 5;
 // FP TODO: Explain, and maybe rename
 constexpr vmcp::FPType stdDevTolerance = 1e-9f;
 // FP TODO: Rename
-constexpr vmcp::IntType varParamsFactor = 8;
+constexpr vmcp::IntType varParamsFactor = 16;
 // FP TODO: One pair of brackets can probably be removed here
-// Learn th epriority of the operations and adjust the resto of the code too
+// Learn the priority of the operations and adjust the rest of the code too
 static_assert((iterations % varParamsFactor) == 0);
+// LF TODO: This is unused for now!
 constexpr bool testImpSamp = true;
+// Rules out situations where both the VMC energy and the variance are extremely large
+constexpr vmcp::FPType vmcEnergyTolerance = 0.5f;
+// FP TODO: Explain
+constexpr vmcp::FPType minParamFactor = 0.33f;
+constexpr vmcp::FPType maxParamFactor = 3;
 
-// FP TODO: Rename if WrappedVMCEnergies is renamed
-TEST_CASE("Testing WrappedVMCEnergies_") {
+TEST_CASE("Testing VMCLocEnAndEnergies_") {
     SUBCASE("1D harmonic oscillator") {
         vmcp::IntType const numberEnergies = 100;
-        vmcp::Bounds<1> const bounds = {vmcp::Bound{-100, 100}};
+        vmcp::CoordBounds<1> const coordBound = {vmcp::Bound{vmcp::Coordinate{-100}, vmcp::Coordinate{100}}};
         vmcp::RandomGenerator rndGen{seed};
         vmcp::Mass const mInit{1.f};
         vmcp::FPType const omegaInit = 1.f;
@@ -63,7 +71,6 @@ TEST_CASE("Testing WrappedVMCEnergies_") {
                 vmcp::Mass m;
                 vmcp::FPType omega;
                 vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
-                    // FP TODO: Constructing a new object might be expensive
                     return (std::pow(x[0][0].val * m.val * omega / vmcp::hbar, 2) -
                             (m.val * omega / vmcp::hbar)) *
                            WavefHO{m, omega}(x, vmcp::VarParams<0>{});
@@ -85,18 +92,28 @@ TEST_CASE("Testing WrappedVMCEnergies_") {
                     potHO.omega = omega_;
                     secondDerHO.omega = omega_;
 
-                    vmcp::Energy expectedEn{vmcp::hbar * omega_ / 2};
-                    vmcp::VMCResult vmcrMetr =
-                        vmcp::VMCEnergy<1, 1, 0>(wavefHO, vmcp::VarParams<0>{}, secondDerHO, m_, potHO,
-                                                 bounds, numberEnergies, rndGen);
-                    vmcp::VMCResult vmcrImpSamp =
-                        vmcp::VMCEnergy<1, 1, 0>(wavefHO, vmcp::VarParams<0>{}, gradHOArr, secondDerHO, m_,
-                                                 potHO, bounds, numberEnergies, rndGen);
+                    vmcp::Energy const expectedEn{vmcp::hbar * omega_ / 2};
+                    vmcp::VMCResult const vmcrMetr =
+                        vmcp::VMCEnergy<1, 1, 0>(wavefHO, vmcp::ParamBounds<0>{}, secondDerHO, m_, potHO,
+                                                 coordBound, numberEnergies, rndGen);
+                    vmcp::VMCResult const vmcrImpSamp =
+                        vmcp::VMCEnergy<1, 1, 0>(wavefHO, vmcp::ParamBounds<0>{}, gradHOArr, secondDerHO, m_,
+                                                 potHO, coordBound, numberEnergies, rndGen);
 
-                    CHECK(std::abs(vmcrMetr.energy.val - expectedEn.val) <
-                          std::max((allowedStdDevs * std::sqrt(vmcrMetr.variance.val)), stdDevTolerance));
-                    CHECK(std::abs(vmcrImpSamp.energy.val - expectedEn.val) <
-                          std::max((allowedStdDevs * std::sqrt(vmcrImpSamp.variance.val)), stdDevTolerance));
+                    std::string logMessage{"mass: " + std::to_string(m_.val) +
+                                           ", ang. vel.: " + std::to_string(omega_)};
+                    CHECK_MESSAGE(std::abs(vmcrMetr.energy.val - expectedEn.val) < vmcEnergyTolerance,
+                                  logMessage);
+                    CHECK_MESSAGE(
+                        std::abs(vmcrMetr.energy.val - expectedEn.val) <
+                            std::max((allowedStdDevs * std::sqrt(vmcrMetr.variance.val)), stdDevTolerance),
+                        logMessage);
+                    CHECK_MESSAGE(std::abs(vmcrImpSamp.energy.val - expectedEn.val) < vmcEnergyTolerance,
+                                  logMessage);
+                    CHECK_MESSAGE(
+                        std::abs(vmcrImpSamp.energy.val - expectedEn.val) <
+                            std::max((allowedStdDevs * std::sqrt(vmcrImpSamp.variance.val)), stdDevTolerance),
+                        logMessage);
                 }
             }
         }
@@ -105,37 +122,44 @@ TEST_CASE("Testing WrappedVMCEnergies_") {
             auto const wavefHO{[](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
                 return std::exp(-alpha[0].val * x[0][0].val * x[0][0].val);
             }};
-            auto const secondDerHO{[&wavefHO](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
-                // FP TODO: Constructing a new object might be expensive
-                return (std::pow(x[0][0].val * alpha[0].val, 2) - alpha[0].val) * wavefHO(x, alpha);
+            auto const secondDerHO{[](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
+                return (std::pow(x[0][0].val * alpha[0].val, 2) - alpha[0].val) *
+                       std::exp(-alpha[0].val * x[0][0].val * x[0][0].val);
             }};
-            PotHO potHO{mInit.val, omegaInit};
+            PotHO potHO{mInit, omegaInit};
             // Ensures that the initial parameter is sufficiently far from the best parameter, which is m *
             // omega / hbar
-            vmcp::IntType const initialParamFactor = 5;
 
             for (auto [i, m_] = std::tuple{vmcp::IntType{0}, mInit}; i != mIterations / varParamsFactor;
                  ++i, m_.val += mStep * varParamsFactor) {
                 potHO.m = m_;
-                for (auto [j, omega_] = std::tuple{vmcp::IntType{0}, omegaInit};
-                     j != omegaIterations / varParamsFactor; ++j, omega_ += omegaStep * varParamsFactor) {
+                for (auto [j, omega_] = std::tuple{vmcp::IntType{0}, omegaInit}; j != omegaIterations;
+                     j += varParamsFactor, omega_ += omegaStep * varParamsFactor) {
                     potHO.omega = omega_;
 
-                    vmcp::VarParams<1> const initialParam{
-                        vmcp::VarParam{initialParamFactor * m_.val * omega_ / vmcp::hbar}};
-                    vmcp::Energy expectedEn{vmcp::hbar * omega_ / 2};
-                    vmcp::VMCResult vmcr = vmcp::VMCEnergy<1, 1, 1>(wavefHO, initialParam, secondDerHO, m_,
-                                                                    potHO, bounds, numberEnergies, rndGen);
+                    vmcp::VarParam bestParam{m_.val * omega_ / vmcp::hbar};
+                    vmcp::ParamBounds<1> const parBound{
+                        vmcp::Bound{vmcp::VarParam{minParamFactor * bestParam.val},
+                                    vmcp::VarParam{maxParamFactor * bestParam.val}}};
+                    vmcp::Energy const expectedEn{vmcp::hbar * omega_ / 2};
+                    vmcp::VMCResult const vmcr = vmcp::VMCEnergy<1, 1, 1>(
+                        wavefHO, parBound, secondDerHO, m_, potHO, coordBound, numberEnergies, rndGen);
 
-                    CHECK(std::abs(vmcr.energy.val - expectedEn.val) <
-                          std::max((allowedStdDevs * std::sqrt(vmcr.variance.val)), stdDevTolerance));
+                    std::string logMessage{"mass: " + std::to_string(m_.val) +
+                                           ", ang. vel.: " + std::to_string(omega_)};
+                    CHECK_MESSAGE(std::abs(vmcr.energy.val - expectedEn.val) < vmcEnergyTolerance,
+                                  logMessage);
+                    CHECK_MESSAGE(
+                        std::abs(vmcr.energy.val - expectedEn.val) <
+                            std::max((allowedStdDevs * std::sqrt(vmcr.variance.val)), stdDevTolerance),
+                        logMessage);
                 }
             }
         }
     }
 
     SUBCASE("1D potential box") {
-        // l = length of the box4
+        // l = length of the box
         vmcp::IntType const numberEnergies = 100;
         vmcp::RandomGenerator rndGen{seed};
         vmcp::Mass const mInit{0.1f};
@@ -163,9 +187,8 @@ TEST_CASE("Testing WrappedVMCEnergies_") {
             struct SecondDerBox {
                 vmcp::FPType l;
                 vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
-                    // FP TODO: Constructing a new object might be expensive
                     return -std::pow(std::numbers::pi_v<vmcp::FPType> / l, 2) *
-                           WavefBox{l}(x, vmcp::VarParams<0>{});
+                           std::cos(std::numbers::pi_v<vmcp::FPType> * x[0][0].val / l);
                 }
             };
 
@@ -178,48 +201,61 @@ TEST_CASE("Testing WrappedVMCEnergies_") {
                     wavefBox.l = l_;
                     secondDerBox.l = l_;
 
-                    vmcp::Bounds<1> bound{vmcp::Bound{-l_ / 2, l_ / 2}};
-                    vmcp::Energy expectedEn{1 / (2 * m_.val) *
-                                            std::pow(vmcp::hbar * std::numbers::pi_v<vmcp::FPType> / l_, 2)};
-                    vmcp::VMCResult vmcrMetr =
-                        vmcp::VMCEnergy<1, 1, 0>(wavefBox, vmcp::VarParams<0>{}, secondDerBox, m_, potBox,
-                                                 bound, numberEnergies, rndGen);
-                    vmcp::VMCResult vmcrImpSamp =
-                        vmcp::VMCEnergy<1, 1, 0>(wavefBox, vmcp::VarParams<0>{}, gradBox, secondDerBox, m_,
-                                                 potBox, bound, numberEnergies, rndGen);
+                    vmcp::CoordBounds<1> const coorBound{
+                        vmcp::Bound{vmcp::Coordinate{-l_ / 2}, vmcp::Coordinate{l_ / 2}}};
+                    vmcp::Energy const expectedEn{
+                        1 / (2 * m_.val) * std::pow(vmcp::hbar * std::numbers::pi_v<vmcp::FPType> / l_, 2)};
+                    vmcp::VMCResult const vmcrMetr =
+                        vmcp::VMCEnergy<1, 1, 0>(wavefBox, vmcp::ParamBounds<0>{}, secondDerBox, m_, potBox,
+                                                 coorBound, numberEnergies, rndGen);
+                    vmcp::VMCResult const vmcrImpSamp =
+                        vmcp::VMCEnergy<1, 1, 0>(wavefBox, vmcp::ParamBounds<0>{}, gradBox, secondDerBox, m_,
+                                                 potBox, coorBound, numberEnergies, rndGen);
 
-                    CHECK(std::abs(vmcrMetr.energy.val - expectedEn.val) <
-                          std::max((allowedStdDevs * std::sqrt(vmcrMetr.variance.val)), stdDevTolerance));
-                    CHECK(std::abs(vmcrImpSamp.energy.val - expectedEn.val) <
-                          std::max((allowedStdDevs * std::sqrt(vmcrImpSamp.variance.val)), stdDevTolerance));
+                    std::string logMessage{"mass: " + std::to_string(m_.val) +
+                                           ", length: " + std::to_string(l_)};
+                    CHECK_MESSAGE(std::abs(vmcrMetr.energy.val - expectedEn.val) < vmcEnergyTolerance,
+                                  logMessage);
+                    CHECK_MESSAGE(
+                        std::abs(vmcrMetr.energy.val - expectedEn.val) <
+                            std::max((allowedStdDevs * std::sqrt(vmcrMetr.variance.val)), stdDevTolerance),
+                        logMessage);
+                    CHECK_MESSAGE(std::abs(vmcrImpSamp.energy.val - expectedEn.val) < vmcEnergyTolerance,
+                                  logMessage);
+                    CHECK_MESSAGE(
+                        std::abs(vmcrImpSamp.energy.val - expectedEn.val) <
+                            std::max((allowedStdDevs * std::sqrt(vmcrImpSamp.variance.val)), stdDevTolerance),
+                        logMessage);
                 }
             }
         }
 
-        /* // FP TODO: Find a nice trial wavefunction
-        SUBCASE("One variational parameter") {
+        // FP TODO: Find a trial wavefunction that works
+        /* SUBCASE("One variational parameter") {
             auto const wavefBox{[](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
                 return std::cos(alpha[0].val * x[0][0].val);
             }};
-            auto const secondDerBox{[&wavefBox](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
-                // FP TODO: Constructing a new object might be expensive
-                return -std::pow(alpha[0].val, 2) * wavefBox(x, alpha);
+            auto const secondDerBox{[](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
+                return -std::pow(alpha[0].val, 2) * std::cos(alpha[0].val * x[0][0].val);
             }};
-            // Ensures that the initial parameter is sufficiently far from the best parameter, which is pi / l
-            vmcp::IntType const initialParamFactor = 5;
 
             for (auto [i, m_] = std::tuple{vmcp::IntType{0}, mInit}; i != mIterations / varParamsFactor;
                  ++i, m_.val += mStep * varParamsFactor) {
-                for (auto [j, l_] = std::tuple{vmcp::IntType{0}, lInit}; j != lIterations / varParamsFactor;
-                     ++j, l_ += lStep * varParamsFactor) {
-                    vmcp::VarParams<1> const initialParam{
-                        vmcp::VarParam{initialParamFactor * std::numbers::pi_v<vmcp::FPType> / l_}};
+                for (auto [j, l_] = std::tuple{vmcp::IntType{0}, lInit}; j != lIterations;
+                     j += varParamsFactor, l_ += lStep * varParamsFactor) {
+                    vmcp::CoordBounds<1> const coordBound = {
+                        vmcp::Bound{vmcp::Coordinate{-l_ / 2}, vmcp::Coordinate{l_ / 2}}};
+                    vmcp::VarParam bestParam{std::numbers::pi_v<vmcp::FPType> / l_};
+                    vmcp::ParamBounds<1> const parBound{
+                        vmcp::Bound{vmcp::VarParam{minParamFactor * bestParam.val},
+                                    vmcp::VarParam{maxParamFactor * bestParam.val}}};
 
-                    vmcp::Bounds<1> bound{vmcp::Bound{-l_ / 2, l_ / 2}};
                     vmcp::Energy expectedEn{1 / (2 * m_.val) *
                                             std::pow(vmcp::hbar * std::numbers::pi_v<vmcp::FPType> / l_, 2)};
-                    vmcp::VMCResult vmcr = vmcp::VMCEnergy<1, 1, 1>(wavefBox, initialParam, secondDerBox, m_,
-                                                                    potBox, bound, numberEnergies, rndGen);
+                    vmcp::VMCResult vmcr = vmcp::VMCEnergy<1, 1, 1>(
+                        wavefBox, parBound, secondDerBox, m_, potBox, coordBound, numberEnergies, rndGen);
+
+                    std::cout << "Best param: " << bestParam.val << '\n';
 
                     CHECK(std::abs(vmcr.energy.val - expectedEn.val) <
                           std::max((allowedStdDevs * std::sqrt(vmcr.variance.val)), stdDevTolerance));
@@ -228,7 +264,7 @@ TEST_CASE("Testing WrappedVMCEnergies_") {
         } */
     }
 
-    // TODO: to be finished & adding references
+    // LF TODO: to be finished & adding references
     // SUBCASE("1D triangular well potential") {
     //     struct WavefTrg {
     //         vmcp::FPType alpha;
@@ -303,7 +339,7 @@ TEST_CASE("Testing WrappedVMCEnergies_") {
     //    }
     //}
 
-    // TODO: to be finished & adding references
+    // LF TODO: to be finished & adding references
     // SUBCASE("1D radial Schroedinger eq") {
     //     struct WavefRad {
     //         vmcp::FPType k;
