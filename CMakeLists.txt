@@ -17,7 +17,7 @@ string(APPEND CMAKE_EXE_LINKER_FLAGS_DEBUG " -fsanitize=address,undefined -fno-o
 set(CMAKE_CTEST_ARGUMENTS "--output-on-failure")
 
 if(BUILD_MAIN)
-      add_executable(main-vmc main.cpp src/vmcalgs.cpp)
+      add_executable(main-vmc main.cpp src/vmcalgs.cpp src/statistics.cpp)
       target_include_directories(main-vmc PRIVATE src)
       target_link_libraries(main-vmc tbb atomic)
 endif()
@@ -26,7 +26,7 @@ if(BUILD_TESTING)
       include(CTest)
       enable_testing()
 
-      add_executable(test-vmc tests/test.cpp src/vmcalgs.cpp)
+      add_executable(test-vmc tests/test.cpp src/vmcalgs.cpp src/statistics.cpp)
       target_include_directories(test-vmc PRIVATE src include)
       target_link_libraries(test-vmc tbb atomic)
       add_test(NAME test-vmc COMMAND test-vmc)

@@ -10,6 +10,10 @@
 #include <random>
 #include <type_traits>
 #include <atomic>
+// Boost library includes
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/framework/accumulator_set.hpp>
+#include <boost/accumulators/statistics.hpp>
 
 namespace vmcp {
 
@@ -81,6 +85,21 @@ struct LocEnAndPoss {
     Energy energy;
     Positions<D, N> positions;
 };
+// Statistical analysis results
+struct BlockingResult {
+    std::vector<IntType> sizes;
+    std::vector<FPType> means;
+    std::vector<FPType> stdDevs;
+};
+struct ConfInterval {
+    FPType min;
+    FPType max;
+};
+struct BootstrapResult {
+    FPType mean;
+    FPType stdDev;
+    ConfInterval confInterval;
+};
 // One-dimensional interval
 template <typename T>
 struct Bound {
@@ -109,6 +128,36 @@ constexpr bool IsPotential() {
 }
 
 } // namespace vmcp
+
+// Boost library custom types
+
+// Type selector based on Stat integer
+template <int Stat>
+struct StatTagSelector;
+
+// Statistical tags
+constexpr int STAT_MEAN = 1;
+constexpr int STAT_VARIANCE = 2;
+constexpr int STAT_SECONDMOMENT = 3;
+
+template <>
+struct StatTagSelector<STAT_MEAN> {
+    using type = boost::accumulators::tag::mean;
+};
+
+template <>
+struct StatTagSelector<STAT_VARIANCE> {
+    using type = boost::accumulators::tag::variance;
+};
+
+template <>
+struct StatTagSelector<STAT_SECONDMOMENT> {
+    using type = boost::accumulators::tag::moment<2>;
+};
+using AccumulatorSet = boost::accumulators::accumulator_set<
+    vmcp::FPType,
+    boost::accumulators::stats<boost::accumulators::tag::mean, boost::accumulators::tag::variance,
+                               boost::accumulators::tag::moment<2>>>;
 
 // Some implementations are in this file
 // It is separated to improve readability
