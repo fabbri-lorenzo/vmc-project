@@ -56,6 +56,7 @@ inline VarParam &VarParam::operator/=(FPType other) {
 inline VarParam operator+(VarParam lhs, VarParam rhs) { return lhs += rhs; }
 inline VarParam operator-(VarParam lhs, VarParam rhs) { return lhs -= rhs; }
 inline VarParam operator*(VarParam lhs, FPType rhs) { return lhs *= rhs; }
+inline VarParam operator*(FPType lhs, VarParam rhs) { return rhs * lhs; }
 inline VarParam operator/(VarParam lhs, FPType rhs) { return lhs /= rhs; }
 
 inline bool operator<(Energy lhs, Energy rhs) { return lhs.val < rhs.val; }

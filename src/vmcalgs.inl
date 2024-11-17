@@ -47,9 +47,9 @@ constexpr IntType movesForgetICs = 10 * thermalizationMoves;
 constexpr FPType minPsi_peakSearch = 1e-6f;
 constexpr IntType maxLoops_gradDesc = 10000;
 constexpr IntType stepDenom_gradDesc = 100;
-constexpr FPType stoppingThreshold_gradDesc = 1e-6f;
+constexpr FPType stoppingThreshold_gradDesc = 1e-9f;
 constexpr FPType targetAcceptRate_VMCLocEnAndPoss = 0.5f;
-constexpr UIntType numWalkers_gradDesc = 8;
+constexpr UIntType numWalkers_gradDesc = 1;
 // FP TODO: Rename
 constexpr FPType gradDescentFraction = 0.1f;
 

@@ -16,7 +16,7 @@
 // FP TODO: Change mStep to a vmcp::Mass everywhere and define operator+= for vmcp::Mass
 
 // Chosen at random
-constexpr vmcp::UIntType seed = 64826u;
+constexpr vmcp::UIntType seed = 648263u;
 constexpr vmcp::IntType iterations = 32;
 // FP TODO: Rename this
 constexpr vmcp::IntType allowedStdDevs = 5;
@@ -38,7 +38,7 @@ constexpr vmcp::FPType minParamFactor = 0.33f;
 constexpr vmcp::FPType maxParamFactor = 3;
 const std::string logFileName = "../artifacts/test-log.txt";
 
-TEST_CASE("Testing VMCLocEnAndEnergies_") {
+TEST_CASE("Testing VMCLocEnAndPoss_") {
     std::ofstream file_stream;
     file_stream.open(logFileName, std::ios_base::app);
 
@@ -162,8 +162,9 @@ TEST_CASE("Testing VMCLocEnAndEnergies_") {
                         wavefHO, parBound, secondDerHO, m_, potHO, coordBound, numberEnergies, rndGen);
                     auto stopOnePar = std::chrono::high_resolution_clock::now();
                     auto durationOnePar = duration_cast<std::chrono::seconds>(stopOnePar - startOnePar);
-                    file_stream << "Harmonic oscillator, one var. parameter (seconds), with mass " << m_.val
-                                << " and ang. vel. " << omega_ << ": " << durationOnePar.count() << '\n';
+                    file_stream << "Harmonic oscillator, one var. parameter, with mass " << m_.val
+                                << " and ang. vel. " << omega_ << " (seconds): " << durationOnePar.count()
+                                << '\n';
 
                     std::string logMessage{"mass: " + std::to_string(m_.val) +
                                            ", ang. vel.: " + std::to_string(omega_)};
@@ -186,39 +187,73 @@ TEST_CASE("Testing VMCLocEnAndEnergies_") {
         // l = length of the box
         vmcp::IntType const numberEnergies = 100;
         vmcp::RandomGenerator rndGen{seed};
-        vmcp::Mass const mInit{0.1f};
-        vmcp::FPType const lInit = 0.5f;
+        vmcp::Mass const mInit{1.f};
+        vmcp::FPType const lInit = 1;
         vmcp::FPType const mStep = 0.2f;
         vmcp::FPType const lStep = 0.2f;
         vmcp::IntType const mIterations = iterations;
         vmcp::IntType const lIterations = iterations;
-        auto const potBox{[](vmcp::Positions<1, 1>) { return vmcp::FPType{0}; }};
+        // Use the following potential: V(x)
+        // = 0 if |x| < 99/100 * l/2
+        // = V_0 * (200/l)^2 * (|x| - 99/100 * l/2) if |x| >= 99/100 * l/2
+        struct PotBox {
+            vmcp::FPType l;
+            vmcp::FPType V_0;
+            vmcp::FPType operator()(vmcp::Positions<1, 1> x) const {
+                if (std::abs(x[0][0].val < 99 * l / 200)) {
+                    return 0;
+                } else {
+                    return std::pow((20 / l) * (std::abs(x[0][0].val) - 9 * l / 20), 2);
+                }
+            }
+        };
+        // FP TODO: Fix this (related to the 1 var par case)
+        // struct PotBox {
+        //    vmcp::FPType l;
+        //    vmcp::FPType V_0;
+        //    vmcp::FPType operator()(vmcp::Positions<1, 1> x) const {
+        //        return 2 * V_0 / (1 + std::exp(-(20 * std::log(9) / l) * (std::abs(x[0][0].val) - l / 2)));
+        //    }
+        // };
 
         SUBCASE("No variational parameters, with Metropolis or importance sampling") {
             struct WavefBox {
                 vmcp::FPType l;
                 vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
-                    return std::cos(std::numbers::pi_v<vmcp::FPType> * x[0][0].val / l);
+                    if (std::abs(x[0][0].val) <= l / 2) {
+                        return std::cos(std::numbers::pi_v<vmcp::FPType> * x[0][0].val / l);
+                    } else {
+                        return 0;
+                    }
                 }
             };
             struct GradBox {
                 vmcp::FPType l;
                 vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
-                    return -(std::numbers::pi_v<vmcp::FPType> / l) *
-                           std::sin(std::numbers::pi_v<vmcp::FPType> * x[0][0].val / l);
+                    if (std::abs(x[0][0].val) <= l / 2) {
+                        return -(std::numbers::pi_v<vmcp::FPType> / l) *
+                               std::sin(std::numbers::pi_v<vmcp::FPType> * x[0][0].val / l);
+                    } else {
+                        return 0;
+                    }
                 }
             };
             struct SecondDerBox {
                 vmcp::FPType l;
                 vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
-                    return -std::pow(std::numbers::pi_v<vmcp::FPType> / l, 2) *
-                           std::cos(std::numbers::pi_v<vmcp::FPType> * x[0][0].val / l);
+                    if (std::abs(x[0][0].val) <= l / 2) {
+                        return -std::pow(std::numbers::pi_v<vmcp::FPType> / l, 2) *
+                               std::cos(std::numbers::pi_v<vmcp::FPType> * x[0][0].val / l);
+                    } else {
+                        return 0;
+                    }
                 }
             };
 
             WavefBox wavefBox{lInit};
             std::array<GradBox, 1> gradBox{GradBox{lInit}};
             SecondDerBox secondDerBox{lInit};
+            PotBox potBox{0, lInit};
 
             auto start = std::chrono::high_resolution_clock::now();
 
@@ -226,11 +261,13 @@ TEST_CASE("Testing VMCLocEnAndEnergies_") {
                 for (auto [j, l_] = std::tuple{vmcp::IntType{0}, lInit}; j != lIterations; ++j, l_ += lStep) {
                     wavefBox.l = l_;
                     secondDerBox.l = l_;
+                    potBox.l = l_;
 
                     vmcp::CoordBounds<1> const coorBound{
                         vmcp::Bound{vmcp::Coordinate{-l_ / 2}, vmcp::Coordinate{l_ / 2}}};
                     vmcp::Energy const expectedEn{
                         1 / (2 * m_.val) * std::pow(vmcp::hbar * std::numbers::pi_v<vmcp::FPType> / l_, 2)};
+                    potBox.V_0 = 10 * expectedEn.val;
                     vmcp::VMCResult const vmcrMetr =
                         vmcp::VMCEnergy<1, 1, 0>(wavefBox, vmcp::ParamBounds<0>{}, secondDerBox, m_, potBox,
                                                  coorBound, numberEnergies, rndGen);
@@ -260,38 +297,70 @@ TEST_CASE("Testing VMCLocEnAndEnergies_") {
             file_stream << "Particle in a box, no var. parameters (seconds): " << duration.count() << '\n';
         }
 
-        // FP TODO: Find a trial wavefunction that works
-        /* SUBCASE("One variational parameter") {
-            auto const wavefBox{[](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
-                return std::cos(alpha[0].val * x[0][0].val);
-            }};
-            auto const secondDerBox{[](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
-                return -std::pow(alpha[0].val, 2) * std::cos(alpha[0].val * x[0][0].val);
-            }};
-
-            for (auto [i, m_] = std::tuple{vmcp::IntType{0}, mInit}; i != mIterations / varParamsFactor;
-                 ++i, m_.val += mStep * varParamsFactor) {
-                for (auto [j, l_] = std::tuple{vmcp::IntType{0}, lInit}; j != lIterations;
-                     j += varParamsFactor, l_ += lStep * varParamsFactor) {
-                    vmcp::CoordBounds<1> const coordBound = {
-                        vmcp::Bound{vmcp::Coordinate{-l_ / 2}, vmcp::Coordinate{l_ / 2}}};
-                    vmcp::VarParam bestParam{std::numbers::pi_v<vmcp::FPType> / l_};
-                    vmcp::ParamBounds<1> const parBound{
-                        vmcp::Bound{vmcp::VarParam{minParamFactor * bestParam.val},
-                                    vmcp::VarParam{maxParamFactor * bestParam.val}}};
-
-                    vmcp::Energy expectedEn{1 / (2 * m_.val) *
-                                            std::pow(vmcp::hbar * std::numbers::pi_v<vmcp::FPType> / l_,
-        2)}; vmcp::VMCResult vmcr = vmcp::VMCEnergy<1, 1, 1>( wavefBox, parBound, secondDerBox, m_,
-        potBox, coordBound, numberEnergies, rndGen);
-
-                    std::cout << "Best param: " << bestParam.val << '\n';
-
-                    CHECK(std::abs(vmcr.energy.val - expectedEn.val) <
-                          std::max((allowedStdDevs * std::sqrt(vmcr.variance.val)), stdDevTolerance));
-                }
-            }
-        } */
+        // FP TODO: Fix this
+        // SUBCASE("One variational parameter") {
+        //     struct WavefBox {
+        //         vmcp::FPType l;
+        //         vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) const {
+        //             if (std::abs(x[0][0].val) <= l / 2) {
+        //                 return std::abs(std::cos(alpha[0].val * x[0][0].val)) +
+        //                        0.001 * std::abs(std::cos(alpha[0].val * l / 2)) /
+        //                            (vmcp::FPType{10.f} - std::pow(2 * x[0][0].val / l, 2));
+        //             } else {
+        //                 return 0;
+        //             }
+        //         }
+        //     };
+        //     struct SecondDerBox {
+        //         vmcp::FPType l;
+        //         vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) const {
+        //             return -alpha[0].val * alpha[0].val * WavefBox{l}(x, alpha);
+        //         }
+        //     };
+        //
+        //    WavefBox wavefBox{lInit};
+        //    SecondDerBox secondDerBox{lInit};
+        //    PotBox potBox{0, lInit};
+        //
+        //    auto start = std::chrono::high_resolution_clock::now();
+        //
+        //    for (auto [i, m_] = std::tuple{vmcp::IntType{0}, mInit}; i != mIterations;
+        //         i += varParamsFactor, m_.val += mStep * varParamsFactor) {
+        //        for (auto [j, l_] = std::tuple{vmcp::IntType{0}, lInit}; j != lIterations;
+        //             j += varParamsFactor, l_ += lStep * varParamsFactor) {
+        //            wavefBox.l = l_;
+        //            secondDerBox.l = l_;
+        //            potBox.l = l_;
+        //
+        //            vmcp::CoordBounds<1> const coordBound{
+        //                vmcp::Bound{vmcp::Coordinate{-l_ / 2}, vmcp::Coordinate{l_ / 2}}};
+        //            vmcp::VarParam bestParam{std::numbers::pi_v<vmcp::FPType> / l_};
+        //            vmcp::ParamBounds<1> const parBound{
+        //                vmcp::Bound{bestParam * minParamFactor, bestParam * maxParamFactor}};
+        //
+        //            vmcp::Energy expectedEn{1 / (2 * m_.val) *
+        //                                    std::pow(vmcp::hbar * std::numbers::pi_v<vmcp::FPType> / l_,
+        //                                    2)};
+        //            potBox.V_0 = 5 * expectedEn.val;
+        //
+        //            auto startOnePar = std::chrono::high_resolution_clock::now();
+        //            vmcp::VMCResult const vmcr = vmcp::VMCEnergy<1, 1, 1>(
+        //                wavefBox, parBound, secondDerBox, m_, potBox, coordBound, numberEnergies, rndGen);
+        //            auto stopOnePar = std::chrono::high_resolution_clock::now();
+        //            auto durationOnePar = duration_cast<std::chrono::seconds>(stopOnePar - startOnePar);
+        //            file_stream << "Harmonic oscillator, one var. parameter, with mass " << m_.val
+        //                        << " and length " << l_ << " (seconds): " << durationOnePar.count() << '\n';
+        //
+        //            CHECK(std::abs(vmcr.energy.val - expectedEn.val) < vmcEnergyTolerance);
+        //            CHECK(std::abs(vmcr.energy.val - expectedEn.val) <
+        //                  std::max(allowedStdDevs * std::sqrt(vmcr.variance.val), stdDevTolerance));
+        //        }
+        //    }
+        //
+        //    auto stop = std::chrono::high_resolution_clock::now();
+        //    auto duration = duration_cast<std::chrono::seconds>(stop - start);
+        //    file_stream << "Particle in a box, one var. parameter (seconds): " << duration.count() << '\n';
+        //}
     }
 
     // LF TODO: to be finished & adding references

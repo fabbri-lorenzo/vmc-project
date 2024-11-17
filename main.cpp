@@ -12,7 +12,10 @@ bool const statistics = true;
 bool const bugfixing = false;
 constexpr std::array features = {ho, statistics, bugfixing};
 
+
 int main() {
+    RandomGenerator gen{(std::random_device())()};
+
     // Feature 1:
     // Various tests with the harmonic oscillator
     if constexpr (features[0]) {
@@ -27,7 +30,6 @@ int main() {
 
         int const numberEnergies = 100;
         CoordBounds<1> const coorBounds = {Bound{Coordinate{-100}, Coordinate{100}}};
-        RandomGenerator gen{(std::random_device())()};
         Mass const mass{0.5f};
 
         for (VarParam alpha{0.1f}; alpha.val <= 2; alpha.val += FPType{0.05f}) {
@@ -85,32 +87,51 @@ int main() {
     // Feature 3
     // Just bugfixing
     if constexpr (features[2]) {
-        vmcp::IntType const numberEnergies = 100;
-        vmcp::CoordBounds<1> const bounds = {vmcp::Bound{vmcp::Coordinate{-100}, vmcp::Coordinate{100}}};
-        vmcp::RandomGenerator rndGen{1};
-        struct PotHO {
-            vmcp::Mass m;
-            vmcp::FPType omega;
-            vmcp::FPType operator()(vmcp::Positions<1, 1> x) const {
-                return x[0][0].val * x[0][0].val * (m.val * omega * omega / 2);
+        vmcp::Mass const mass{1.f};
+        vmcp::FPType const length = 1;
+        struct WavefBox {
+            vmcp::FPType l;
+            vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) const {
+                if (std::abs(x[0][0].val) <= l / 2) {
+                    return std::abs(std::cos(alpha[0].val * x[0][0].val)) +
+                           10 * std::abs(std::cos(alpha[0].val * l / 2)) /
+                               (5 - std::pow(2 * x[0][0].val / l, 2));
+                } else {
+                    return 0;
+                }
             }
         };
-        Mass mass{1.f};
-        FPType omega{2.6f};
-        vmcp::VarParam bestAlpha{mass.val * omega / vmcp::hbar};
-        vmcp::ParamBounds<1> alphaBound{
-            vmcp::Bound{vmcp::VarParam{bestAlpha.val * 0.1f}, vmcp::VarParam{bestAlpha.val * 10}}};
-        auto const wavefHO{[](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
-            return std::exp(-alpha[0].val * x[0][0].val * x[0][0].val);
-        }};
-        auto const secondDerHO{[](vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) {
-            return (std::pow(x[0][0].val * alpha[0].val, 2) - alpha[0].val) *
-                   std::exp(-alpha[0].val * x[0][0].val * x[0][0].val);
-        }};
-        PotHO potHO{mass, omega};
-        vmcp::VMCResult const vmcr = vmcp::VMCEnergy<1, 1, 1>(wavefHO, alphaBound, secondDerHO, mass, potHO,
-                                                              bounds, numberEnergies, rndGen);
+        struct PotBox {
+            vmcp::FPType l;
+            vmcp::FPType V_0;
+            vmcp::FPType operator()(vmcp::Positions<1, 1> x) const {
+                return 2 * V_0 / (1 + std::exp(-(20 * std::log(9) / l) * (std::abs(x[0][0].val) - l / 2)));
+            }
+        };
+        struct SecondDerBox {
+            vmcp::FPType l;
+            vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<1> alpha) const {
+                return -alpha[0].val * alpha[0].val * WavefBox{l}(x, alpha);
+            }
+        };
 
-        std::cout << vmcr.energy.val << '\t' << std::sqrt(vmcr.variance.val) << '\n';
+        vmcp::IntType const numberEnergies = 100;
+        WavefBox wavefBox{length};
+        SecondDerBox secondDerBox{length};
+        vmcp::Energy const expectedEn{1 / (2 * mass.val) *
+                                      std::pow(vmcp::hbar * std::numbers::pi_v<vmcp::FPType> / length, 2)};
+        PotBox potBox{20 * expectedEn.val, length};
+        vmcp::VarParam bestParam{std::numbers::pi_v<vmcp::FPType> / length};
+        vmcp::CoordBounds<1> const coordBound{
+            vmcp::Bound{vmcp::Coordinate{-length / 2}, vmcp::Coordinate{length / 2}}};
+
+        for (vmcp::VarParam alpha = bestParam / 100; alpha.val <= 2 * bestParam.val;
+             alpha.val += bestParam.val / 100) {
+            VMCResult const vmcr = AvgAndVar_(LocalEnergies_(VMCLocEnAndPoss<1, 1, 1>(
+                wavefBox, VarParams<1>{alpha}, secondDerBox, mass, potBox, coordBound, numberEnergies, gen)));
+            std::cout << "alpha: " << std::setprecision(3) << alpha.val
+                      << "\tenergy: " << std::setprecision(5) << vmcr.energy.val << " +/- "
+                      << std::sqrt(vmcr.variance.val) << '\n';
+        }
     }
 }
