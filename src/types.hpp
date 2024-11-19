@@ -6,10 +6,10 @@
 // TODO: Use somewhere the Jackson-Freebeerg kinetic energy
 
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <random>
 #include <type_traits>
-#include <atomic>
 // Boost library includes
 #include <boost/accumulators/accumulators.hpp>
 #include <boost/accumulators/framework/accumulator_set.hpp>
@@ -72,6 +72,7 @@ struct Mass {
 // Variational Monte Carlo algorithm result
 struct Energy {
     FPType val;
+    Energy &operator+=(Energy);
 };
 struct EnVariance {
     FPType val;
@@ -86,6 +87,8 @@ struct LocEnAndPoss {
     Positions<D, N> positions;
 };
 // Statistical analysis results
+// Blocking should return a VMCResult, with the usual average and the error on the average estimated by looking
+// at the "pleteau" ...
 struct BlockingResult {
     std::vector<IntType> sizes;
     std::vector<FPType> means;
@@ -131,16 +134,22 @@ constexpr bool IsPotential() {
 
 // Boost library custom types
 
-// Type selector based on Stat integer
-template <int Stat>
-struct StatTagSelector;
+// FP: I see that the StatTagSelector type in never used.
+// If I am right, does it make sense to have it?
 
+/* // Type selector based on Stat integer
+template <int Stat>
+struct StatTagSelector; */
+
+// FP: See line 29 of player.hpp in cpp-template
+// May that be helpful here?
+// However, if this syntax in required by boost, I will just shut up
 // Statistical tags
 constexpr int STAT_MEAN = 1;
 constexpr int STAT_VARIANCE = 2;
 constexpr int STAT_SECONDMOMENT = 3;
 
-template <>
+/* template <>
 struct StatTagSelector<STAT_MEAN> {
     using type = boost::accumulators::tag::mean;
 };
@@ -153,7 +162,8 @@ struct StatTagSelector<STAT_VARIANCE> {
 template <>
 struct StatTagSelector<STAT_SECONDMOMENT> {
     using type = boost::accumulators::tag::moment<2>;
-};
+}; */
+
 using AccumulatorSet = boost::accumulators::accumulator_set<
     vmcp::FPType,
     boost::accumulators::stats<boost::accumulators::tag::mean, boost::accumulators::tag::variance,

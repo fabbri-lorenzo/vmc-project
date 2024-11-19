@@ -29,6 +29,9 @@ FPType constexpr zScore = 1.96;
 // Helper function to get the desired statistic value from the accumulator
 template <int Stat>
 FPType getStatValue_(AccumulatorSet &dataAcc) {
+    // FP: careful with these if else
+    // Go look "dangling else"
+    // Or maybe this is a perfectly safe syntax and I should study more and talk less
     if constexpr (Stat == STAT_MEAN) {
         return boost::accumulators::mean(dataAcc);
     } else if constexpr (Stat == STAT_VARIANCE) {
@@ -42,6 +45,7 @@ FPType getStatValue_(AccumulatorSet &dataAcc) {
 }
 
 // Helper function for accumulators
+// FP: Descritpion does not say what the function does
 template <typename T>
 void FillAcc_(AccumulatorSet &dataAcc, const std::vector<T> &energyVector) {
     if constexpr (std::is_same_v<T, Energy>) {
@@ -58,14 +62,30 @@ void FillAcc_(AccumulatorSet &dataAcc, const std::vector<T> &energyVector) {
 }
 
 // Helper function for Blocking, fills blocks-vectors with desired statistic
+// FP: Since the functions expects blockStats to be empty, you do not care about the previous content of
+// blockStats Then is it really necessary to have it as input parameter? Why not return it from the function?
+// FP: Really not a fan of the fact that all blocks have the same size, except (maybe) for the last one
+// Could you ask for a vector of energies of opportune size as input?
+// Just tear down the program (i.e. fail an assert) if you do not get what you want, like a 3 year old
 template <int Stat>
 void FillStatBlocks_(std::vector<FPType> &blockStats, std::vector<Energy> const &energies,
                      IntType numEnergies, IntType blockSize) {
     AccumulatorSet accBlock;
+    // FP: IntType
     int rem = numEnergies % blockSize;
     IntType currentBlock = 0;
+    // FP: This function is so insanely dangerous (not that you are insane, the function is)
+    // It relies on a delicate balance between the size of blockStatsm numEnergies, and blockSize
+    // I know that you only call this when you are sure that the size of blockStats is ...
+    // But this constraint is not at all obvious is general, it requires someone to look inside the machinery
+    // of your function to see how he should behave, which exactly the opposite of what functions are for
     std::generate(blockStats.begin(), blockStats.end(),
                   [&energies, &numEnergies, &accBlock, &blockSize, &currentBlock, &rem]() mutable {
+                      // FP: Is mutable really necessary here?
+                      // Also, I would just define accBlock inside this {}, since you have to actively erase
+                      // it at the start of each loop
+                      // And i BELIEVE that the "computational cost" of allocanting memory for a new variable
+                      // is kinda the same as erasing a variable (i.e. overwriting it with "zeros")
                       accBlock = {}; // Reset accumulator
                       auto start = energies.begin() + currentBlock * blockSize;
                       auto end = (currentBlock * blockSize + blockSize <= numEnergies) ? start + blockSize
@@ -96,6 +116,7 @@ void FillBootstrapVec_(std::vector<FPType> &bootstrapVector, std::vector<Energy>
                       return getStatValue_<Stat>(accSample);
                   });
 }
+
 } // namespace vmcp
 
 #endif
