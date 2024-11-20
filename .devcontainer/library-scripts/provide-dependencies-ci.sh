@@ -5,4 +5,5 @@ set -e
 apt-get install -y \
     g++ \
     cmake \
-    libtbb-dev
+    libtbb-dev \
+    libboost-all-dev

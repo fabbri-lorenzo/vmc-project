@@ -7,7 +7,11 @@
 using namespace vmcp;
 
 // The various features of main can be toggled here
-constexpr std::array features = {false, true};
+bool const ho = true;
+bool const statistics = true;
+bool const bugfixing = false;
+constexpr std::array features = {ho, statistics, bugfixing};
+
 
 int main() {
     RandomGenerator gen{(std::random_device())()};
@@ -44,10 +48,45 @@ int main() {
                   << std::setprecision(3) << "Energy: " << std::setprecision(5) << vmcrBest.energy.val
                   << " +/- " << std::sqrt(vmcrBest.variance.val) << '\n';
     }
-
     // Feature 2
-    // Just bugfixing
+    // Statistical analysis
     if constexpr (features[1]) {
+        auto const wavefHO{[](Positions<1, 1> x, VarParams<1> alpha) {
+            return std::pow(std::numbers::e_v<FPType>, -alpha[0].val * x[0][0].val * x[0][0].val / 2);
+        }};
+        auto const potHO{[](Positions<1, 1> x) { return x[0][0].val * x[0][0].val; }};
+        auto const secondDerHO{[&wavefHO](Positions<1, 1> x, VarParams<1> alpha) {
+            return (std::pow(alpha[0].val * x[0][0].val, 2) - alpha[0].val) * wavefHO(x, alpha);
+        }};
+
+        int const numberEnergies = 1000;
+        CoordBounds<1> const coorBounds = {Bound{Coordinate{-100}, Coordinate{100}}};
+        RandomGenerator gen{(std::random_device())()};
+        Mass const mass{0.5f};
+        FPType alphaVal = 0.9f;
+        std::vector<Energy> energySamp = LocalEnergies_(VMCLocEnAndPoss<1, 1, 1>(
+            wavefHO, VarParams<1>{alphaVal}, secondDerHO, mass, potHO, coorBounds, numberEnergies, gen));
+
+        BlockingResult blockingResult = BlockingAnalysis(energySamp);
+        for (size_t blockGroup = 0; blockGroup < blockingResult.sizes.size(); ++blockGroup) {
+            std::cout << '\n'
+                      << "block size: " << blockingResult.sizes[blockGroup]
+                      << " , mean: " << blockingResult.means[blockGroup] << " , std. dev.: " << std::fixed
+                      << std::setprecision(5) << blockingResult.stdDevs[blockGroup] << '\n';
+        }
+
+        UIntType const numSamples = 10000;
+        BootstrapResult bootstrapResult = BootstrapAnalysis(energySamp, numSamples, gen);
+        std::cout << '\n'
+                  << "Bootstrap mean: " << bootstrapResult.mean << std::fixed << std::setprecision(5)
+                  << "\nBootstrap std. dev.: " << bootstrapResult.stdDev
+                  << "\nConfidence interval with confidence level of 95% : "
+                  << bootstrapResult.confInterval.min << " - " << bootstrapResult.confInterval.max << '\n';
+    }
+
+    // Feature 3
+    // Just bugfixing
+    if constexpr (features[2]) {
         vmcp::Mass const mass{1.f};
         vmcp::FPType const length = 1;
         struct WavefBox {

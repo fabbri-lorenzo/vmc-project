@@ -59,6 +59,11 @@ inline VarParam operator*(VarParam lhs, FPType rhs) { return lhs *= rhs; }
 inline VarParam operator*(FPType lhs, VarParam rhs) { return rhs * lhs; }
 inline VarParam operator/(VarParam lhs, FPType rhs) { return lhs /= rhs; }
 
+inline Energy &Energy::operator+=(Energy other) {
+    val += other.val;
+    return *this;
+}
+inline Energy operator+(Energy lhs, Energy rhs) { return lhs += rhs; }
 inline bool operator<(Energy lhs, Energy rhs) { return lhs.val < rhs.val; }
 
 } // namespace vmcp

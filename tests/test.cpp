@@ -20,6 +20,8 @@ constexpr vmcp::UIntType seed = 648263u;
 constexpr vmcp::IntType iterations = 32;
 // FP TODO: Rename this
 constexpr vmcp::IntType allowedStdDevs = 5;
+// Tolerance for results of statistical analysis
+constexpr vmcp::FPType statisticsTolerance = 0.02;
 // FP TODO: Explain, and maybe rename
 constexpr vmcp::FPType stdDevTolerance = 1e-9f;
 // FP TODO: Rename
@@ -513,4 +515,24 @@ TEST_CASE("Testing VMCLocEnAndPoss_") {
     //        }
     //    }
     //}
+}
+
+TEST_CASE("Testing BlockingAnalysis") {
+    std::vector<vmcp::Energy> testEnergies = {vmcp::Energy{1.f}, vmcp::Energy{2.f}, vmcp::Energy{3.f},
+                                              vmcp::Energy{4.f}};
+    vmcp::BlockingResult blockingResults = BlockingAnalysis(testEnergies);
+    CHECK(blockingResults.means[0] == 2.5);
+    CHECK(blockingResults.means[1] == 2.5);
+    CHECK(std::abs(blockingResults.stdDevs[0] - std::sqrt(1.25 / 3.)) < statisticsTolerance);
+    CHECK(blockingResults.stdDevs[1] - std::sqrt(2.5) < statisticsTolerance);
+}
+
+TEST_CASE("Testing BootstrapAnalysis") {
+    vmcp::IntType const numSamples = 10000;
+    vmcp::RandomGenerator rndGen{seed};
+    std::vector<vmcp::Energy> testEnergies = {vmcp::Energy{1}, vmcp::Energy{2}, vmcp::Energy{3},
+                                              vmcp::Energy{4}, vmcp::Energy{5}};
+    vmcp::BootstrapResult bootstrapResults = BootstrapAnalysis(testEnergies, numSamples, rndGen);
+    CHECK(std::abs(bootstrapResults.mean - 3.f) < statisticsTolerance);
+    CHECK(std::abs(bootstrapResults.stdDev - (1 / std::sqrt(2))) < statisticsTolerance);
 }
