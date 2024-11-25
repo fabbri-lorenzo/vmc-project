@@ -1,0 +1,2 @@
+/workspaces/vmc-project-main/CMakeFiles/edit_cache.dir
+/workspaces/vmc-project-main/CMakeFiles/rebuild_cache.dir

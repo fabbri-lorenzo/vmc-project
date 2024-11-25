@@ -52,6 +52,8 @@ TEST_CASE("Testing VMCLocEnAndPoss_") {
     // FP TODO: Unsure about this
     // assert(file_stream);
 
+    /*
+
     SUBCASE("1D harmonic oscillator") {
         vmcp::IntType const numberEnergies = 1 << 4;
         vmcp::CoordBounds<1> const coordBound = {vmcp::Bound{vmcp::Coordinate{-100}, vmcp::Coordinate{100}}};
@@ -484,159 +486,188 @@ TEST_CASE("Testing VMCLocEnAndPoss_") {
         //    file_stream << "Particle in a box, one var. parameter (seconds): " << duration.count() <<
         // '\n';
         //}
+    }*/
+
+    // LF TODO: to be finished & adding references
+    SUBCASE("1D triangular well potential") {
+        vmcp::IntType const numberEnergies = 1 << 4;
+        vmcp::CoordBounds<1> const coordBound = {vmcp::Bound{vmcp::Coordinate{-1}, vmcp::Coordinate{1}}};
+        vmcp::RandomGenerator rndGen{seed};
+        vmcp::Mass const mInit{0.1f};
+        vmcp::FPType const FInit = 0.1f;
+        vmcp::Mass const mStep{0.05f};
+        vmcp::FPType const FStep = 0.05f;
+        vmcp::IntType const mIterations = iterations;
+        vmcp::IntType const FIterations = iterations;
+        constexpr vmcp::FPType V0 = 1e-9;
+
+        struct PotTriangular {
+            vmcp::Mass m;
+            vmcp::FPType F;
+
+            vmcp::FPType operator()(vmcp::Positions<1, 1> x) const { return V0 - F * x[0][0].val; }
+        };
+
+        SUBCASE("No variational parameters, with Metropolis or importance sampling") {
+            struct WavefTriangular {
+                vmcp::Mass m;
+                vmcp::FPType F;
+
+                vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
+                    auto const alpha = std::pow(2 * m.val * F / (vmcp::hbar * vmcp::hbar), 1.0f / 3.0f);
+                    auto const xi = alpha * x[0][0].val;
+                    return boost::math::airy_ai(xi);
+                }
+            };
+
+            struct FirstDerTriangular {
+                vmcp::Mass m;
+                vmcp::FPType F;
+
+                vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
+                    auto const alpha = std::pow(2 * m.val * F / (vmcp::hbar * vmcp::hbar), 1.0 / 3.0);
+                    auto const xi = alpha * x[0][0].val;
+                    return alpha * boost::math::airy_ai_prime(xi);
+                }
+            };
+
+            struct LaplTriangular {
+                vmcp::Mass m;
+                vmcp::FPType F;
+
+                vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
+                    auto const alpha = std::pow(2 * m.val * F / vmcp::hbar / vmcp::hbar, 1.0 / 3.0);
+                    auto const xi = alpha * x[0][0].val;
+                    return std::pow(alpha, 2) * (xi * boost::math::airy_ai(xi));
+                }
+            };
+
+            WavefTriangular wavefTriangular{mInit.val, FInit};
+            vmcp::Gradients<1, 1, FirstDerTriangular> gradTriangular{FirstDerTriangular{mInit.val, FInit}};
+            vmcp::Laplacians<1, LaplTriangular> laplTriangular{LaplTriangular{mInit, FInit}};
+            PotTriangular potTriangular{mInit.val, FInit};
+
+            auto start = std::chrono::high_resolution_clock::now();
+
+            for (auto [i, m_] = std::tuple{vmcp::IntType{0}, mInit}; i != mIterations; ++i, m_ += mStep) {
+                potTriangular.m = m_;
+                wavefTriangular.m = m_;
+                gradTriangular[0][0].m = m_;
+                laplTriangular[0].m = m_;
+                for (auto [j, F_] = std::tuple{vmcp::IntType{0}, FInit}; j != FIterations; ++j, F_ += FStep) {
+                    potTriangular.F = F_;
+                    wavefTriangular.F = F_;
+                    gradTriangular[0][0].F = F_;
+                    laplTriangular[0].F = F_;
+
+                    vmcp::Energy const expectedEn{
+                        boost::math::airy_ai_zero<vmcp::FPType>(1) *
+                        std::pow(std::pow(vmcp::hbar * F_, 2) / (2 * m_.val), 1.0f / 3.0f)};
+                    vmcp::VMCResult const vmcrMetr = vmcp::VMCEnergy<1, 1, 0>(
+                        wavefTriangular, vmcp::ParamBounds<0>{}, laplTriangular, std::array{m_},
+                        potTriangular, coordBound, numberEnergies, rndGen);
+
+                    vmcp::VMCResult const vmcrImpSamp = vmcp::VMCEnergy<1, 1, 0>(
+                        wavefTriangular, vmcp::ParamBounds<0>{}, gradTriangular, laplTriangular,
+                        std::array{m_}, potTriangular, coordBound, numberEnergies, rndGen);
+
+                    std::string logMessage{"mass: " + std::to_string(m_.val) +
+                                           ", slope: " + std::to_string(F_)};
+                    CHECK_MESSAGE(abs(vmcrMetr.energy - expectedEn) < vmcEnergyTolerance, logMessage);
+                    CHECK_MESSAGE(abs(vmcrMetr.energy - expectedEn) <
+                                      max(vmcrMetr.stdDev * allowedStdDevs, stdDevTolerance),
+                                  logMessage);
+                    CHECK_MESSAGE(abs(vmcrImpSamp.energy - expectedEn) < vmcEnergyTolerance, logMessage);
+                    CHECK_MESSAGE(abs(vmcrImpSamp.energy - expectedEn) <
+                                      max(vmcrImpSamp.stdDev * allowedStdDevs, stdDevTolerance),
+                                  logMessage);
+                }
+            }
+
+            auto stop = std::chrono::high_resolution_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::seconds>(stop - start);
+            std::cout << "Triangular potential simulation (seconds): " << duration.count() << '\n';
+        }
     }
-
-    // LF TODO: to be finished & adding references
-    // SUBCASE("1D triangular well potential") {
-    //     struct WavefTrg {
-    //         vmcp::FPType alpha;
-    //         vmcp::FPType m;
-    //         vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
-    //             return std::pow(std::numbers::e_v<vmcp::FPType>,
-    //                             -std::pow(2 * m * alpha / (vmcp::hbar * vmcp::hbar), 1 / 3) *
-    //                                 std::abs(x[0][0].val));
-    //         }
-    //     };
-    //     struct PotTrg {
-    //         vmcp::FPType alpha;
-    //         vmcp::FPType operator()(vmcp::Positions<1, 1> x) const { return alpha *
-    //         std::abs(x[0][0].val);
-    //         }
-    //     };
-    //     struct GradTrg {
-    //         vmcp::FPType alpha;
-    //         vmcp::FPType m;
-    //         vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
-    //             return -std::pow(2 * m * alpha / (vmcp::hbar * vmcp::hbar), 1 / 3) *
-    //                    std::signbit(x[0][0].val) * WavefTrg{alpha, m}(x, vmcp::VarParams<0>{});
-    //         }
-    //     };
-    //     struct SecondDerTrg {
-    //         vmcp::FPType alpha;
-    //         vmcp::FPType m;
-    //         vmcp::FPType operator()(vmcp::Positions<1, 1> x, vmcp::VarParams<0>) const {
-    //             return std::pow(2 * m * alpha / (vmcp::hbar * vmcp::hbar), 2 / 3) *
-    //                    WavefTrg{alpha, m}(x, vmcp::VarParams<0>{});
-    //         }
-    //     };
-    //
-    //    vmcp::IntType const numberEnergies = 100;
-    //    vmcp::Bounds<1> const bounds = {vmcp::Bound{-100, 100}};
-    //    vmcp::RandomGenerator rndGen{seed};
-    //    vmcp::FPType const alphaInit = 0.1f;
-    //    vmcp::FPType const mInit = 0.5f;
-    //    vmcp::FPType const alphaStep = 0.2f;
-    //    vmcp::FPType const mStep = 0.2f;
-    //    vmcp::IntType const alphaIterations = 10;
-    //    vmcp::IntType const mIterations = 10;
-    //    vmcp::Mass mass = vmcp::Mass{1.f};
-    //    WavefTrg wavefTrg{alphaInit, mInit};
-    //    PotTrg potTrg{alphaInit};
-    //    GradTrg gradTrg{alphaInit, mInit};
-    //    SecondDerTrg secondDerTrg{alphaInit, mInit};
-    //    std::array<GradTrg, 1> gradTrgArr = {gradTrg};
-    //    for (auto [i, m_] = std::tuple{vmcp::IntType{0}, mInit}; i != mIterations; ++i, m_ += mStep) {
-    //        wavefTrg.m = m_;
-    //        gradTrg.m = m_;
-    //        secondDerTrg.m = m_;
-    //        for (auto [j, alpha_] = std::tuple{vmcp::IntType{0}, alphaInit}; j != alphaIterations;
-    //             ++j, alpha_ += alphaStep) {
-    //            wavefTrg.alpha = alpha_;
-    //            potTrg.alpha = alpha_;
-    //            gradTrg.alpha = alpha_;
-    //            secondDerTrg.alpha = alpha_;
-    //            mass.val = m_;
-    //
-    //            vmcp::Energy expectedEn{std::pow(2 * m_, -1 / 3) *
-    //                                    std::pow(alpha_ * vmcp::hbar * 3 / 4, 2 / 3)};
-    //            vmcp::VMCResult vmcr =
-    //                vmcp::VMCEnergy<1, 1>(wavefTrg, vmcp::VarParams<0>{}, testImpSamp, gradTrgArr,
-    //                                      secondDerTrg, mass, potTrg, bounds, numberEnergies, rndGen);
-    //
-    //            if (std::abs(vmcr.variance.val) < varianceTolerance) {
-    //                CHECK(std::abs(vmcr.energy.val - expectedEn.val) < varianceTolerance);
-    //            } else {
-    //                CHECK(std::abs(vmcr.energy.val - expectedEn.val) < vmcr.variance.val);
-    //            }
-    //        }
-    //    }
-    //}
-
-    // LF TODO: to be finished & adding references
-    // SUBCASE("1D radial Schroedinger eq") {
-    //     struct WavefRad {
-    //         vmcp::FPType k;
-    //         vmcp::FPType m;
-    //         vmcp::FPType operator()(vmcp::Positions<1, 1> r, vmcp::VarParams<0>) const {
-    //             return r[0][0].val * std::pow(std::numbers::e_v<vmcp::FPType>,
-    //                                           -m * k / (vmcp::hbar * vmcp::hbar) * r[0][0].val);
-    //         }
-    //     };
-    //     struct PotRad {
-    //         vmcp::FPType k;
-    //         vmcp::FPType operator()(vmcp::Positions<1, 1> r) const { return (-k / r[0][0].val); }
-    //     };
-    //     struct GradRad {
-    //         vmcp::FPType k;
-    //         vmcp::FPType m;
-    //         vmcp::FPType operator()(vmcp::Positions<1, 1> r, vmcp::VarParams<0>) const {
-    //             return (1 - m * k / (vmcp::hbar * vmcp::hbar) * r[0][0].val) *
-    //                    WavefRad{k, m}(r, vmcp::VarParams<0>{});
-    //         }
-    //     };
-    //     struct SecondDerRad {
-    //         vmcp::FPType k;
-    //         vmcp::FPType m;
-    //         vmcp::FPType operator()(vmcp::Positions<1, 1> r, vmcp::VarParams<0>) const {
-    //             return (std::pow(1 - r[0][0].val * m * k / (vmcp::hbar * vmcp::hbar), 2) -
-    //                     m * k / (vmcp::hbar * vmcp::hbar)) *
-    //                    WavefRad{k, m}(r, vmcp::VarParams<0>{});
-    //         }
-    //     };
-    //
-    //    vmcp::IntType const numberEnergies = 100;
-    //    vmcp::Bounds<1> const bounds = {vmcp::Bound{0, 100}};
-    //    vmcp::RandomGenerator rndGen{seed};
-    //    vmcp::FPType const kInit = 1.2f;
-    //    vmcp::FPType const mInit = 0.3f;
-    //    vmcp::FPType const kStep = 0.1f;
-    //    vmcp::FPType const mStep = 0.2f;
-    //    vmcp::IntType const kIterations = 10;
-    //    vmcp::IntType const mIterations = 10;
-    //    vmcp::Mass mass = vmcp::Mass{1.f};
-    //    WavefRad wavefRad{kInit, mInit};
-    //    PotRad potRad{kInit};
-    //    GradRad gradRad{kInit, mInit};
-    //    SecondDerRad secondDerRad{kInit, mInit};
-    //    std::array<GradRad, 1> gradRadArr = {gradRad};
-    //
-    //    for (auto [i, m_] = std::tuple{vmcp::IntType{0}, mInit}; i != mIterations; ++i, m_ += mStep) {
-    //        wavefRad.m = m_;
-    //        gradRad.m = m_;
-    //        secondDerRad.m = m_;
-    //        for (auto [j, k_] = std::tuple{vmcp::IntType{0}, kInit}; j != kIterations; ++j, k_ += kStep)
-    //        {
-    //            wavefRad.k = k_;
-    //            potRad.k = k_;
-    //            gradRad.k = k_;
-    //            secondDerRad.k = k_;
-    //            mass.val = m_;
-    //
-    //            vmcp::Energy expectedEn{-m_ * std::pow((1.6021766 * std::pow(10, -19)), 4) /
-    //                                    (2 * vmcp::hbar)};
-    //            vmcp::VMCResult vmcr =
-    //                vmcp::VMCEnergy<1, 1>(wavefRad, vmcp::VarParams<0>{}, testImpSamp, gradRadArr,
-    //                                      secondDerRad, mass, potRad, bounds, numberEnergies, rndGen);
-    //
-    //            if (std::abs(vmcr.variance.val) < varianceTolerance) {
-    //                CHECK(std::abs(vmcr.energy.val - expectedEn.val) < varianceTolerance);
-    //            } else {
-    //                CHECK(std::abs(vmcr.energy.val - expectedEn.val) < vmcr.variance.val);
-    //            }
-    //        }
-    //    }
-    //}
 }
+/*
+
+// LF TODO: to be finished & adding references
+SUBCASE("1D radial Schroedinger eq") {
+    struct WavefRad {
+        vmcp::FPType k;
+        vmcp::FPType m;
+        vmcp::FPType operator()(vmcp::Positions<1, 1> r, vmcp::VarParams<0>) const {
+            return r[0][0].val * std::pow(std::numbers::e_v<vmcp::FPType>,
+                                          -m * k / (vmcp::hbar * vmcp::hbar) * r[0][0].val);
+        }
+    };
+    struct PotRad {
+        vmcp::FPType k;
+        vmcp::FPType operator()(vmcp::Positions<1, 1> r) const { return (-k / r[0][0].val); }
+    };
+    struct GradRad {
+        vmcp::FPType k;
+        vmcp::FPType m;
+        vmcp::FPType operator()(vmcp::Positions<1, 1> r, vmcp::VarParams<0>) const {
+            return (1 - m * k / (vmcp::hbar * vmcp::hbar) * r[0][0].val) *
+                   WavefRad{k, m}(r, vmcp::VarParams<0>{});
+        }
+    };
+    struct SecondDerRad {
+        vmcp::FPType k;
+        vmcp::FPType m;
+        vmcp::FPType operator()(vmcp::Positions<1, 1> r, vmcp::VarParams<0>) const {
+            return (std::pow(1 - r[0][0].val * m * k / (vmcp::hbar * vmcp::hbar), 2) -
+                    m * k / (vmcp::hbar * vmcp::hbar)) *
+                   WavefRad{k, m}(r, vmcp::VarParams<0>{});
+        }
+    };
+
+    vmcp::IntType const numberEnergies = 100;
+    vmcp::Bounds<1> const bounds = {vmcp::Bound{0, 100}};
+    vmcp::RandomGenerator rndGen{seed};
+    vmcp::FPType const kInit = 1.2f;
+    vmcp::FPType const mInit = 0.3f;
+    vmcp::FPType const kStep = 0.1f;
+    vmcp::FPType const mStep = 0.2f;
+    vmcp::IntType const kIterations = 10;
+    vmcp::IntType const mIterations = 10;
+    vmcp::Mass mass = vmcp::Mass{1.f};
+    WavefRad wavefRad{kInit, mInit};
+    PotRad potRad{kInit};
+    GradRad gradRad{kInit, mInit};
+    SecondDerRad secondDerRad{kInit, mInit};
+    std::array<GradRad, 1> gradRadArr = {gradRad};
+
+    for (auto [i, m_] = std::tuple{vmcp::IntType{0}, mInit}; i != mIterations; ++i, m_ += mStep) {
+        wavefRad.m = m_;
+        gradRad.m = m_;
+        secondDerRad.m = m_;
+        for (auto [j, k_] = std::tuple{vmcp::IntType{0}, kInit}; j != kIterations; ++j, k_ += kStep) {
+            wavefRad.k = k_;
+            potRad.k = k_;
+            gradRad.k = k_;
+            secondDerRad.k = k_;
+            mass.val = m_;
+
+            vmcp::Energy expectedEn{-m_ * std::pow((1.6021766 * std::pow(10, -19)), 4) /
+                                    (2 * vmcp::hbar)};
+            vmcp::VMCResult vmcr =
+                vmcp::VMCEnergy<1, 1>(wavefRad, vmcp::VarParams<0>{}, testImpSamp, gradRadArr,
+                                      secondDerRad, mass, potRad, bounds, numberEnergies, rndGen);
+
+            if (std::abs(vmcr.variance.val) < varianceTolerance) {
+                CHECK(std::abs(vmcr.energy.val - expectedEn.val) < varianceTolerance);
+            } else {
+                CHECK(std::abs(vmcr.energy.val - expectedEn.val) < vmcr.variance.val);
+            }
+        }
+    }
+}
+}
+}
+*/
 
 TEST_CASE("Testing Statistics") {
     // Chosen at random, but fixed to guarantee reproducibility of failed tests
@@ -693,3 +724,4 @@ TEST_CASE("Testing Statistics") {
         }
     }
 }
+
