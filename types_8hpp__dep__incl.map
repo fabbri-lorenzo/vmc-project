@@ -1,0 +1,19 @@
+<map id="src/types.hpp" name="src/types.hpp">
+<area shape="rect" id="node1" title="Type definition header." alt="" coords="389,5,488,31"/>
+<area shape="rect" id="node2" href="$statistics_8hpp.html" title="Statistical methods header." alt="" coords="495,79,617,104"/>
+<area shape="rect" id="node6" href="$vmcalgs_8hpp.html" title="Declaration of the user functions and the constants." alt="" coords="383,225,500,251"/>
+<area shape="rect" id="node8" href="$vmcp_8hpp.html" title="Wrapper header." alt="" coords="322,299,422,324"/>
+<area shape="rect" id="node17" href="$test_8hpp.html" title="Definition of constants and generic functions used in the tests." alt="" coords="639,299,740,324"/>
+<area shape="rect" id="node3" href="$statistics_8cpp.html" title="Definition of the non&#45;templated statistics algorithms." alt="" coords="594,152,715,177"/>
+<area shape="rect" id="node4" href="$statistics_8inl.html" title="Definition of the templated statistics algorithms." alt="" coords="739,152,853,177"/>
+<area shape="rect" id="node5" href="$vmcalgs_8inl.html" title="Definition of the user and core functions." alt="" coords="409,152,519,177"/>
+<area shape="rect" id="node7" href="$vmchelpers_8inl.html" title="Definition of the helpers of the core functions." alt="" coords="474,299,601,324"/>
+<area shape="rect" id="node9" href="$main_8hpp.html" title="Helper functions for main." alt="" coords="5,372,80,397"/>
+<area shape="rect" id="node11" href="$test-box-1p1d_8cpp_source.html" title=" " alt="" coords="611,372,768,397"/>
+<area shape="rect" id="node12" href="$test-ho-1p1d_8cpp.html" title="Tests for the harmonic oscillator system, with one particle in one dimension." alt="" coords="793,372,943,397"/>
+<area shape="rect" id="node13" href="$test-ho-1p2d_8cpp.html" title="Tests for the harmonic oscillator system, one particle in two dimensions." alt="" coords="967,372,1118,397"/>
+<area shape="rect" id="node14" href="$test-ho-2p1d_8cpp.html" title="Tests for the harmonic oscillator system, with two particles in one dimension." alt="" coords="105,372,255,397"/>
+<area shape="rect" id="node15" href="$test-rad-1p1d_8cpp.html" title="Tests for the hydrogen atom radial problem, with one particle in cartesian coordinates." alt="" coords="280,372,435,397"/>
+<area shape="rect" id="node16" href="$test-stat_8cpp_source.html" title=" " alt="" coords="459,372,586,397"/>
+<area shape="rect" id="node10" href="$main_8cpp.html" title="main file" alt="" coords="5,445,80,471"/>
+</map>

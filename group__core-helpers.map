@@ -1,0 +1,5 @@
+<map id="Core helpers" name="Core helpers">
+<area shape="rect" id="node1" title="Help the core functions." alt="" coords="5,31,100,56"/>
+<area shape="rect" id="node2" href="$group__energy-calc.html" title="The algorithms that calculate the local energy." alt="" coords="148,5,309,31"/>
+<area shape="rect" id="node3" href="$group__update-algs.html" title="The algorithms that move the particles during the simulations." alt="" coords="165,55,292,80"/>
+</map>

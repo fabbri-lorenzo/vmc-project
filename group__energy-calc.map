@@ -1,0 +1,5 @@
+<map id="Local energy calculators" name="Local energy calculators">
+<area shape="rect" id="node1" href="$group__core-helpers.html" title="Help the core functions." alt="" coords="5,5,100,31"/>
+<area shape="rect" id="node2" title="The algorithms that calculate the local energy." alt="" coords="148,5,309,31"/>
+<area shape="rect" id="node3" href="$group__energy-calc-helpers.html" title="The algorithms that calculate the local energy." alt="" coords="357,5,497,31"/>
+</map>

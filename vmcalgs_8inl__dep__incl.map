@@ -1,0 +1,14 @@
+<map id="src/vmcalgs.inl" name="src/vmcalgs.inl">
+<area shape="rect" id="node1" title="Definition of the user and core functions." alt="" coords="440,5,549,31"/>
+<area shape="rect" id="node2" href="$vmcalgs_8hpp.html" title="Declaration of the user functions and the constants." alt="" coords="436,79,553,104"/>
+<area shape="rect" id="node3" href="$vmchelpers_8inl.html" title="Definition of the helpers of the core functions." alt="" coords="335,152,462,177"/>
+<area shape="rect" id="node4" href="$vmcp_8hpp.html" title="Wrapper header." alt="" coords="486,152,586,177"/>
+<area shape="rect" id="node5" href="$main_8hpp.html" title="Helper functions for main." alt="" coords="5,225,80,251"/>
+<area shape="rect" id="node7" href="$test-box-1p1d_8cpp_source.html" title=" " alt="" coords="104,225,261,251"/>
+<area shape="rect" id="node8" href="$test-ho-1p1d_8cpp.html" title="Tests for the harmonic oscillator system, with one particle in one dimension." alt="" coords="286,225,437,251"/>
+<area shape="rect" id="node9" href="$test-ho-1p2d_8cpp.html" title="Tests for the harmonic oscillator system, one particle in two dimensions." alt="" coords="461,225,611,251"/>
+<area shape="rect" id="node10" href="$test-ho-2p1d_8cpp.html" title="Tests for the harmonic oscillator system, with two particles in one dimension." alt="" coords="635,225,786,251"/>
+<area shape="rect" id="node11" href="$test-rad-1p1d_8cpp.html" title="Tests for the hydrogen atom radial problem, with one particle in cartesian coordinates." alt="" coords="811,225,965,251"/>
+<area shape="rect" id="node12" href="$test-stat_8cpp_source.html" title=" " alt="" coords="990,225,1117,251"/>
+<area shape="rect" id="node6" href="$main_8cpp.html" title="main file" alt="" coords="5,299,80,324"/>
+</map>
