@@ -1,0 +1,18 @@
+<map id="src/types.hpp" name="src/types.hpp">
+<area shape="rect" id="node1" title="Type definition header." alt="" coords="351,5,449,31"/>
+<area shape="rect" id="node2" href="$statistics_8hpp.html" title="Statistical methods header." alt="" coords="457,79,578,104"/>
+<area shape="rect" id="node6" href="$vmcalgs_8hpp.html" title="Declaration of the user functions and the constants." alt="" coords="344,225,461,251"/>
+<area shape="rect" id="node8" href="$vmcp_8hpp.html" title="Wrapper header." alt="" coords="285,299,385,324"/>
+<area shape="rect" id="node16" href="$test_8hpp.html" title="Definition of constants and generic functions used in the tests." alt="" coords="612,299,713,324"/>
+<area shape="rect" id="node3" href="$statistics_8cpp.html" title="Definition of the non&#45;templated statistics algorithms." alt="" coords="555,152,677,177"/>
+<area shape="rect" id="node4" href="$statistics_8inl.html" title="Definition of the templated statistics algorithms." alt="" coords="701,152,814,177"/>
+<area shape="rect" id="node5" href="$vmcalgs_8inl.html" title="Definition of the user and core functions." alt="" coords="371,152,480,177"/>
+<area shape="rect" id="node7" href="$vmchelpers_8inl.html" title="Definition of the helpers of the core functions." alt="" coords="435,299,562,324"/>
+<area shape="rect" id="node9" href="$main_8hpp.html" title="Helper functions for main." alt="" coords="5,372,80,397"/>
+<area shape="rect" id="node11" href="$test-box-1p1d_8cpp_source.html" title=" " alt="" coords="256,372,413,397"/>
+<area shape="rect" id="node12" href="$test-ho-1p1d_8cpp.html" title="Tests for the harmonic oscillator system, with one particle in one dimension." alt="" coords="438,372,589,397"/>
+<area shape="rect" id="node13" href="$test-ho-1p2d_8cpp.html" title="Tests for the harmonic oscillator system, one particle in two dimensions." alt="" coords="613,372,763,397"/>
+<area shape="rect" id="node14" href="$test-ho-2p1d_8cpp.html" title="Tests for the harmonic oscillator system, with two particles in one dimension." alt="" coords="787,372,938,397"/>
+<area shape="rect" id="node15" href="$test-stat_8cpp_source.html" title=" " alt="" coords="105,372,231,397"/>
+<area shape="rect" id="node10" href="$main_8cpp.html" title="main file" alt="" coords="5,445,80,471"/>
+</map>

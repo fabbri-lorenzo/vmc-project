@@ -1,0 +1,8 @@
+<map id="tests/test.hpp" name="tests/test.hpp">
+<area shape="rect" id="node1" title="Definition of constants and generic functions used in the tests." alt="" coords="387,5,488,31"/>
+<area shape="rect" id="node2" href="$test-box-1p1d_8cpp_source.html" title=" " alt="" coords="5,79,163,104"/>
+<area shape="rect" id="node3" href="$test-ho-1p1d_8cpp.html" title="Tests for the harmonic oscillator system, with one particle in one dimension." alt="" coords="187,79,338,104"/>
+<area shape="rect" id="node4" href="$test-ho-1p2d_8cpp.html" title="Tests for the harmonic oscillator system, one particle in two dimensions." alt="" coords="362,79,513,104"/>
+<area shape="rect" id="node5" href="$test-ho-2p1d_8cpp.html" title="Tests for the harmonic oscillator system, with two particles in one dimension." alt="" coords="537,79,687,104"/>
+<area shape="rect" id="node6" href="$test-stat_8cpp_source.html" title=" " alt="" coords="711,79,838,104"/>
+</map>
